@@ -1,0 +1,33 @@
+{
+  "name": "mindgraph-tools-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Doors for MindGraph memory: Vercel AI SDK / OpenAI SDK wrappers and the eve memory provider (one version line, three packages)",
+  "license": "MIT",
+  "repository": "github:shuruheel/mindgraph-tools",
+  "workspaces": [
+    "packages/core",
+    "packages/tools",
+    "packages/eve"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "MINDGRAPH_E2E=1 vitest run examples",
+    "check": "npm run lint && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@ai-sdk/openai": "^3.0.0",
+    "@ai-sdk/provider": "3.0.8",
+    "@types/node": "^20.17.0",
+    "ai": "6.0.142",
+    "mindgraph": "git+https://github.com/shuruheel/mindgraph-ts.git#d5abbbe703b8d2d275f7523f63b8a5901d230be1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^3.0.0"
+  }
+}

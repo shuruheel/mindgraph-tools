@@ -1,0 +1,26 @@
+{
+  "name": "mindgraph-agent-core",
+  "version": "0.1.0",
+  "description": "Shared recall/capture core for MindGraph agent-memory doors (used by mindgraph-tools and mindgraph-eve)",
+  "license": "MIT",
+  "repository": "github:shuruheel/mindgraph-tools",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean"
+  },
+  "peerDependencies": {
+    "mindgraph": ">=0.16.0"
+  }
+}

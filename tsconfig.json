@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "mindgraph-agent-core": ["./packages/core/src/index.ts"],
+      "mindgraph-tools": ["./packages/tools/src/index.ts"],
+      "mindgraph-tools/openai": ["./packages/tools/src/openai.ts"],
+      "mindgraph-eve": ["./packages/eve/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/src/**/*.ts", "examples/**/*.ts"]
+}

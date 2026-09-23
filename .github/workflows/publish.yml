@@ -1,0 +1,37 @@
+name: publish
+
+# Publishes the three packages on a `v*` tag. The tag must equal the version
+# in every package.json (one version line for the workspace). Uses npm OIDC
+# trusted publishing (configure each package on npmjs.com first) — no token.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - name: tag == package versions
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          for p in packages/core packages/tools packages/eve; do
+            v=$(node -p "require('./$p/package.json').version")
+            if [ "$v" != "$tag" ]; then echo "$p is $v, tag is $tag" >&2; exit 1; fi
+          done
+      - run: npm run check
+      - run: npm publish -w packages/core --access public --provenance
+      - run: npm publish -w packages/tools --access public --provenance
+      - run: npm publish -w packages/eve --access public --provenance

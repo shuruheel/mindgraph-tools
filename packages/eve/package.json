@@ -1,0 +1,35 @@
+{
+  "name": "mindgraph-eve",
+  "version": "0.1.0",
+  "description": "MindGraph memory provider for eve (Vercel): recall before each turn, capture after it, compaction recaps as Session traces, search/remember/forget/resume tools",
+  "license": "MIT",
+  "repository": "github:shuruheel/mindgraph-tools",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "skill"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean"
+  },
+  "dependencies": {
+    "mindgraph-agent-core": "0.1.0"
+  },
+  "peerDependencies": {
+    "ai": "^6.0.0 || ^7.0.0",
+    "eve": "^0.64.0",
+    "mindgraph": ">=0.16.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": { "optional": true },
+    "eve": { "optional": true }
+  }
+}

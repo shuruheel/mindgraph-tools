@@ -1,0 +1,43 @@
+{
+  "name": "mindgraph-tools",
+  "version": "0.1.0",
+  "description": "withMindGraph(): one-line MindGraph memory for the Vercel AI SDK and the OpenAI SDK (recall before the call, capture after, fail-open in 5 s)",
+  "license": "MIT",
+  "repository": "github:shuruheel/mindgraph-tools",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./ai-sdk": {
+      "types": "./dist/ai-sdk.d.ts",
+      "import": "./dist/ai-sdk.js",
+      "require": "./dist/ai-sdk.cjs"
+    },
+    "./openai": {
+      "types": "./dist/openai.d.ts",
+      "import": "./dist/openai.js",
+      "require": "./dist/openai.cjs"
+    }
+  },
+  "files": ["dist"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsup src/index.ts src/ai-sdk.ts src/openai.ts --format esm,cjs --dts --clean"
+  },
+  "dependencies": {
+    "mindgraph-agent-core": "0.1.0"
+  },
+  "peerDependencies": {
+    "ai": "^6.0.0 || ^7.0.0",
+    "mindgraph": ">=0.16.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": { "optional": true }
+  }
+}
