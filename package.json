@@ -25,7 +25,7 @@
     "@ai-sdk/provider": "3.0.8",
     "@types/node": "^20.17.0",
     "ai": "6.0.142",
-    "mindgraph": "git+https://github.com/shuruheel/mindgraph-ts.git#d5abbbe703b8d2d275f7523f63b8a5901d230be1",
+    "mindgraph": "0.16.0",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",
     "vitest": "^3.0.0"
