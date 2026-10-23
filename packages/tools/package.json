@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "withMindGraph(): one-line MindGraph memory for the Vercel AI SDK and the OpenAI SDK (recall before the call, capture after, fail-open in 5 s)",
   "license": "MIT",
-  "repository": "github:shuruheel/mindgraph-tools",
+  "repository": {"type": "git", "url": "git+https://github.com/shuruheel/mindgraph-tools.git", "directory": "packages/tools"},
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
