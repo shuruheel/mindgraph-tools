@@ -176,3 +176,25 @@ describe("CaptureQueue", () => {
     expect(queue.pending).toBe(0);
   });
 });
+
+describe("renderContext with server-side text (evidence plan R2)", () => {
+  it("passes the server's context_text through and reports its omissions", () => {
+    const raw = {
+      context_text: "Legend: …\nAs of: 2024-06-01\n[2024-04-05] Claim — budget is $8,000 [current]",
+      graph: { nodes: [{ uid: "a", label: "ignored", node_type: "Claim" }], edges: [] },
+      omitted: { nodes: 2, chunks: 0, articles: 0, conflicts: 0 },
+      truncated: true,
+    };
+    const out = renderContext(raw);
+    expect(out.text).toBe(raw.context_text);
+    expect(out.items).toBe(1);
+    expect(out.omitted).toBe(2);
+    expect(out.warnings).toContain("context_bounded");
+  });
+
+  it("guards the server text with the character budget", () => {
+    const out = renderContext({ context_text: "x".repeat(1000), graph: { nodes: [], edges: [] } }, { maxChars: 600 });
+    expect(out.text.startsWith("x".repeat(600))).toBe(true);
+    expect(out.text).toContain("[truncated to 600 characters]");
+  });
+});

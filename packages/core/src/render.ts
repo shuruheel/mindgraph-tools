@@ -45,6 +45,24 @@ export interface RenderOptions {
 export function renderContext(raw: unknown, options: RenderOptions = {}): RenderedContext {
   const maxChars = options.maxChars ?? 4_000;
   const payload = obj(raw) ?? {};
+  // Evidence plan R2 (2026-11-06): a server that rendered the evidence itself
+  // (`format: "text"`) is the one contract every door shares — dated items,
+  // supersession and conflict markers, a hard token budget. Pass it through
+  // under the character guard; the local renderer below serves older servers.
+  if (typeof payload.context_text === "string" && payload.context_text.length > 0) {
+    const serverText = payload.context_text;
+    const graphNodes = obj(payload.graph)?.nodes;
+    const items = Array.isArray(graphNodes) ? graphNodes.length : 0;
+    const omittedBlock = obj(payload.omitted);
+    const omitted = typeof omittedBlock?.nodes === "number" ? omittedBlock.nodes : 0;
+    const warnings: string[] = [];
+    if (serverText.length > maxChars) {
+      warnings.push("context_bounded");
+      return { text: `${serverText.slice(0, maxChars)}\n[truncated to ${maxChars} characters]`, items, omitted, warnings };
+    }
+    if (payload.truncated === true) warnings.push("context_bounded");
+    return { text: serverText, items, omitted, warnings };
+  }
   const graph = obj(payload.graph) ?? {};
   const lines: string[] = [];
   const warnings: string[] = [];
