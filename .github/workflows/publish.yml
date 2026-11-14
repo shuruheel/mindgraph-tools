@@ -23,6 +23,8 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
+      # OIDC trusted publishing requires npm >=11.5.1. Node 22 bundles npm 10.
+      - run: npm install -g npm@11.5.1
       - run: npm ci
       - name: tag == package versions
         run: |
