@@ -21,7 +21,7 @@ export const MEMORY_OPEN = "<mindgraph-memory>";
 export const MEMORY_CLOSE = "</mindgraph-memory>";
 
 export interface MindGraphToolsOptions extends CoreOptions {
-  /** `query` (default) recalls by the latest user message; `profile`/`full` degrade to it until M1 ships. */
+  /** `query` (default) recalls by the latest user message; `profile`/`full` require an explicit Space and memory.v1-capable SDK/server. */
   mode?: MemoryMode;
   /** Where the recalled block goes: a `user`-role message before the latest user turn (default) or appended to the system prompt. */
   inject?: "user" | "system";
@@ -87,13 +87,15 @@ export class MindGraphMemory {
     const query = userText.trim();
     if (!query) return null;
     const hash = sha256Hex(query);
-    if (this.lastRecall.hash === hash) return this.lastRecall.text;
+    const cacheQuery = this.options.mode !== "profile" && this.options.mode !== "full";
+    if (cacheQuery && this.lastRecall.hash === hash) return this.lastRecall.text;
     let text: string | null = null;
+    let profileId: string | undefined;
     if (this.options.mode === "profile" || this.options.mode === "full") {
       const profile = await recallProfile(this.client, this.resolved);
-      if (profile) text = profile.text;
+      if (profile) { text = profile.text; profileId = profile.id; }
     }
-    if (this.options.mode !== "profile" || text === null) {
+    if (this.options.mode !== "profile") {
       const recall = await recallByQuery(this.client, this.resolved, query, {
         nodeLimit: this.options.nodeLimit,
         maxChars: this.options.maxChars,
@@ -101,8 +103,8 @@ export class MindGraphMemory {
       this.options.onRecall?.(recall, query);
       if (recall) text = text ? `${text}\n\n${recall.text}` : recall.text;
     }
-    const block = text ? `${MEMORY_OPEN}\n${text}\n${MEMORY_CLOSE}` : null;
-    this.lastRecall = { hash, text: block };
+    const block = text ? `${MEMORY_OPEN}\n${profileId ? `<!-- mindgraph-profile:${encodeURIComponent(profileId)} -->\n` : ""}${text}\n${MEMORY_CLOSE}` : null;
+    if (cacheQuery) this.lastRecall = { hash, text: block };
     return block;
   }
 
@@ -133,7 +135,7 @@ export function injectMemory<M extends HostMessage>(
   appendSystem: (message: M, text: string) => M,
   makeSystem: (text: string) => M,
 ): M[] {
-  const out = [...messages];
+  const out = removeProfileMemory(messages);
   if (inject === "system") {
     const sys = out.findIndex((m) => m.role === "system");
     if (sys >= 0) out[sys] = appendSystem(out[sys]!, block);
@@ -144,4 +146,29 @@ export function injectMemory<M extends HostMessage>(
   if (idx < 0) return out;
   out.splice(idx, 0, makeUser(block));
   return out;
+}
+
+/** Remove only owned profile blocks before any new read, including failed/empty
+ * reads. This prevents forgotten or differently scoped evidence persisting in
+ * hosts that pass transformed prompts back on the next turn. */
+export function stripProfileText(text: string): string {
+  return text.replace(/<mindgraph-memory>[\s\S]*?<\/mindgraph-memory>/g, block =>
+    block.includes("<!-- mindgraph-profile:") ? "" : block);
+}
+export function removeProfileMemory<M extends HostMessage>(messages: readonly M[]): M[] {
+  return messages.flatMap(message => {
+    const original = message.content;
+    let content: unknown = original;
+    if (typeof original === "string") content = stripProfileText(original);
+    else if (Array.isArray(original)) content = original.map(part => {
+      if (typeof part === "string") return stripProfileText(part);
+      if (part && typeof part === "object" && typeof part.text === "string") return {...part,text:stripProfileText(part.text)};
+      return part;
+    });
+    const next={...message,content} as M;
+    // Preserve multimodal content and all originally empty/tool messages.
+    if (messageText(message).includes("<!-- mindgraph-profile:") && !messageText(next).trim()
+        && (typeof content === "string" || (Array.isArray(content) && content.every(p=>typeof p==="string" || p?.type==="text")))) return [];
+    return [next];
+  });
 }

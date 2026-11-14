@@ -65,9 +65,15 @@ export async function recallByQuery(
 ): Promise<QueryRecall | null> {
   const trimmed = query.trim().slice(0, QUERY_MAX_CHARS);
   if (!trimmed) return null;
-  const raw = await failOpen("recall", resolved.onError, () =>
-    client.retrieveContext(buildQueryRequest(trimmed, resolved, options.nodeLimit)),
-  );
+  const raw = await failOpen("recall", resolved.onError, () => {
+    if (resolved.spaceUid) {
+      const sdk = client as MindGraph & { memory?: (scope: { space_uid: string }) => { context(options: object): Promise<unknown> } };
+      if (!sdk.memory) throw new Error("Scoped recall requires a memory.v1-capable SDK");
+      const { include_graph: _includeGraph, ...request } = buildQueryRequest(trimmed, resolved, options.nodeLimit);
+      return sdk.memory({ space_uid: resolved.spaceUid }).context({ ...request, include_org_space: resolved.includeOrgSpace });
+    }
+    return client.retrieveContext(buildQueryRequest(trimmed, resolved, options.nodeLimit));
+  });
   if (raw === null) return null;
   const rendered = renderContext(raw, { maxChars: options.maxChars });
   if (!rendered.text.trim()) return null;

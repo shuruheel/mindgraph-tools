@@ -31,7 +31,7 @@ const model = withMindGraph(openai("gpt-5.4-mini"), memory);
 waitUntil(memory.flush());
 ```
 
-Options: `mode` (`query` now; `profile` / `full` degrade to `query` until `/memory/profile` ships), `inject` (`user` default, or `system`), `capture` (`false`, or `{ minChars, batchSize, batchDelayMs }`), `maxChars`, `nodeLimit`, `timeoutMs`, `projectUid`, `spaceUid`, `principalId`, `onError`, `onRecall`.
+Options: `mode` (`query` by default; `profile` / `full` require an explicit `spaceUid` and a memory.v1-capable SDK/server), `inject` (`user` default, or `system`), `capture` (`false`, or `{ minChars, batchSize, batchDelayMs }`), `maxChars`, `nodeLimit`, `timeoutMs`, `projectUid`, `spaceUid`, `includeOrgSpace` (default false), `principalId`, `onError`, `onRecall`.
 
 ## OpenAI SDK
 
@@ -71,3 +71,5 @@ MINDGRAPH_E2E=1 MINDGRAPH_API_KEY=mg_... npm run test:e2e   # eve restart accept
 ```
 
 Node 20+. `eve` itself needs Node 24 at runtime; this repo types the provider structurally so it builds without it.
+
+Profile recall checks `GET /memory/v1`, preserves `projectUid` alongside `spaceUid`, and requests bounded Markdown. Missing capability or a failed scoped read continues without that memory; it never falls back to a wider legacy read. `onError` receives `profile_incomplete` with omission/unavailable details for partial profiles. Shared typed knowledge normally lives in `space:org`; opt in with `includeOrgSpace: true`. Existing SDKs remain usable for unscoped query mode; profile/scoped recall requires the SDK exposing `memory()` and `contracts()`.

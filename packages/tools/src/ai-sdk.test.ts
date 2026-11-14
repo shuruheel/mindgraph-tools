@@ -167,7 +167,7 @@ describe("withMindGraph (AI SDK)", () => {
     expect(remember.body.text).toBe("User: Where do we deploy the service?\nAssistant: Deploy to mg-prod.");
   });
 
-  it("profile mode degrades to query mode with one warning until M1 ships", async () => {
+  it("profile mode reports unsupported SDK and continues without memory", async () => {
     stubFetch(() => contextResponse);
     const onError = vi.fn();
     const model = mockModel();
@@ -176,7 +176,7 @@ describe("withMindGraph (AI SDK)", () => {
       messages: [{ role: "user", content: "who am I?" }],
     });
     expect(onError).toHaveBeenCalledWith(expect.any(Error), "profile_unavailable");
-    expect(model.doGenerateCalls[0]!.prompt.map((m) => m.role)).toEqual(["user", "user"]);
+    expect(model.doGenerateCalls[0]!.prompt.map((m) => m.role)).toEqual(["user"]);
   });
 
   it("inject: system appends to the system prompt instead", async () => {

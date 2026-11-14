@@ -1,6 +1,6 @@
 {
   "name": "mindgraph-eve",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MindGraph memory provider for eve (Vercel): recall before each turn, capture after it, compaction recaps as Session traces, search/remember/forget/resume tools",
   "license": "MIT",
   "repository": {"type": "git", "url": "git+https://github.com/shuruheel/mindgraph-tools.git", "directory": "packages/eve"},
@@ -21,7 +21,7 @@
     "build": "tsup src/index.ts --format esm,cjs --dts --clean"
   },
   "dependencies": {
-    "mindgraph-agent-core": "0.1.0"
+    "mindgraph-agent-core": "0.2.0"
   },
   "peerDependencies": {
     "ai": "^6.0.0 || ^7.0.0",

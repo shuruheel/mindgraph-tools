@@ -1,5 +1,5 @@
 import { messageText, type HostMessage } from "mindgraph-agent-core";
-import { MindGraphMemory, injectMemory, type MindGraphToolsOptions } from "./memory.js";
+import { MindGraphMemory, injectMemory, removeProfileMemory, stripProfileText, type MindGraphToolsOptions } from "./memory.js";
 
 /**
  * Structural view of the OpenAI SDK client: only the two entry points we
@@ -92,12 +92,12 @@ export function withMindGraph<T extends OpenAILikeClient>(
 
   async function chatCreate(this: unknown, body: any, ...rest: any[]) {
     const original = client.chat!.completions.create;
-    const messages: ChatMessage[] = Array.isArray(body?.messages) ? body.messages : [];
+    const messages: ChatMessage[] = removeProfileMemory(Array.isArray(body?.messages) ? body.messages : []);
     const user = lastUserText(messages);
     const block = await memory.recall(user);
     const nextBody = block
       ? { ...body, messages: injectMemory(messages, block, inject, asUser, appendSystem, asSystem) }
-      : body;
+      : { ...body, messages };
     const result = await original.call(client.chat!.completions, nextBody, ...rest);
     if (body?.stream === true && result && typeof result[Symbol.asyncIterator] === "function") {
       return captureChatStream(result, (assistant) => {
@@ -111,6 +111,10 @@ export function withMindGraph<T extends OpenAILikeClient>(
 
   async function responsesCreate(this: unknown, body: any, ...rest: any[]) {
     const original = client.responses!.create;
+    body = { ...body,
+      ...(Array.isArray(body?.input) ? {input:removeProfileMemory(body.input as ChatMessage[])} : {}),
+      ...(typeof body?.instructions === "string" ? {instructions:stripProfileText(body.instructions)} : {}),
+    };
     const messages = responseInputToMessages(body?.input);
     const user = lastUserText(messages);
     const block = await memory.recall(user);

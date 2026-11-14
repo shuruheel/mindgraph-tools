@@ -19,7 +19,7 @@ export {
   type HostMessage,
   type QueryRecall,
 } from "./strategies/query.js";
-export { recallProfile, PROFILE_UNAVAILABLE, type ProfileRecall } from "./strategies/profile.js";
+export { recallProfile, PROFILE_UNAVAILABLE, PROFILE_INCOMPLETE, type ProfileRecall } from "./strategies/profile.js";
 export {
   captureExchange,
   exchangeCustomId,
