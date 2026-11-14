@@ -1,6 +1,6 @@
 {
   "name": "mindgraph-agent-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared recall/capture core for MindGraph agent-memory doors (used by mindgraph-tools and mindgraph-eve)",
   "license": "MIT",
   "repository": {"type": "git", "url": "git+https://github.com/shuruheel/mindgraph-tools.git", "directory": "packages/core"},

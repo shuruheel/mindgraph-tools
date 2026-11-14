@@ -1,6 +1,6 @@
 import { wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware } from "ai";
 import { messageText, type HostMessage } from "mindgraph-agent-core";
-import { MindGraphMemory, injectMemory, type MindGraphToolsOptions } from "./memory.js";
+import { MindGraphMemory, injectMemory, removeProfileMemory, type MindGraphToolsOptions } from "./memory.js";
 
 type PromptMessage = HostMessage & { role: "system" | "user" | "assistant" | "tool" };
 
@@ -34,10 +34,10 @@ export function mindGraphMiddleware(
   return {
     specificationVersion: "v3",
     transformParams: async ({ params }) => {
-      const prompt = (params.prompt ?? []) as unknown as PromptMessage[];
+      const prompt = removeProfileMemory((params.prompt ?? []) as unknown as PromptMessage[]);
       const userText = lastUser(prompt);
       const block = await memory.recall(userText);
-      if (!block) return params;
+      if (!block) return { ...params, prompt: prompt as unknown as typeof params.prompt };
       const next = injectMemory<PromptMessage>(
         prompt,
         block,

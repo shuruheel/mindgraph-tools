@@ -1,6 +1,6 @@
 {
   "name": "mindgraph-tools-workspace",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Doors for MindGraph memory: Vercel AI SDK / OpenAI SDK wrappers and the eve memory provider (one version line, three packages)",
   "license": "MIT",

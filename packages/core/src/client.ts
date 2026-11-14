@@ -13,8 +13,10 @@ export interface CoreOptions {
   agentId?: string;
   /** Corpus boundary for recall (Project uid). */
   projectUid?: string;
-  /** Explicit Space for writes (for example an agent's private space). */
+  /** Explicit Space for writes and profile recall. */
   spaceUid?: string;
+  /** Also read shared org knowledge in profile mode. Default false. */
+  includeOrgSpace?: boolean;
   /** Recorded in capture props for per-user provenance. */
   principalId?: string;
   /** Called on every swallowed error; the door never throws into the host. */
@@ -29,6 +31,7 @@ export interface ResolvedOptions {
   agentId: string;
   projectUid: string | undefined;
   spaceUid: string | undefined;
+  includeOrgSpace: boolean;
   principalId: string | undefined;
   onError: ((error: unknown, operation: string) => void) | undefined;
 }
@@ -47,6 +50,7 @@ export function resolveOptions(options: CoreOptions = {}): ResolvedOptions {
     agentId: options.agentId ?? DEFAULT_AGENT_ID,
     projectUid: options.projectUid,
     spaceUid: options.spaceUid,
+    includeOrgSpace: options.includeOrgSpace ?? false,
     principalId: options.principalId,
     onError: options.onError,
   };
