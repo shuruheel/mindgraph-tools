@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 candidate (unreleased)
+## 0.2.0
 
 Add capability-checked, Space-bound profile recall and scoped context recall. Incomplete profiles report their omitted/unavailable sections; profile replacement preserves unrelated prompt blocks. All three packages share 0.2.0 and pin mindgraph-agent-core exactly.
 
