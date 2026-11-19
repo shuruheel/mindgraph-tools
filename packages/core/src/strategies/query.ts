@@ -10,7 +10,7 @@ export interface HostMessage {
 
 export const QUERY_MAX_CHARS = 500;
 
-/** Plain text of a message: string content, or the joined `text` parts. */
+/** Plain text of a message, including Chat/AI SDK and Responses text parts. */
 export function messageText(message: HostMessage): string {
   const { content } = message;
   if (typeof content === "string") return content;
@@ -19,7 +19,8 @@ export function messageText(message: HostMessage): string {
       .map((part) => {
         if (typeof part === "string") return part;
         const p = part as { type?: string; text?: string };
-        return p && p.type === "text" && typeof p.text === "string" ? p.text : "";
+        return p && (p.type === "text" || p.type === "input_text" || p.type === "output_text")
+          && typeof p.text === "string" ? p.text : "";
       })
       .filter(Boolean)
       .join("\n");

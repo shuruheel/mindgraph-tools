@@ -168,7 +168,7 @@ export function removeProfileMemory<M extends HostMessage>(messages: readonly M[
     const next={...message,content} as M;
     // Preserve multimodal content and all originally empty/tool messages.
     if (messageText(message).includes("<!-- mindgraph-profile:") && !messageText(next).trim()
-        && (typeof content === "string" || (Array.isArray(content) && content.every(p=>typeof p==="string" || p?.type==="text")))) return [];
+        && (typeof content === "string" || (Array.isArray(content) && content.every(p=>typeof p==="string" || ["text","input_text","output_text"].includes(p?.type))))) return [];
     return [next];
   });
 }

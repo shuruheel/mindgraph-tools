@@ -68,6 +68,16 @@ describe("renderContext", () => {
 });
 
 describe("messages", () => {
+  it("reads Responses text without treating images or unknown parts as query text", () => {
+    const input = { role: "user", content: [
+      { type: "input_text", text: "  question\n" },
+      { type: "input_image", image_url: "data:image/png;base64,AA==", text: "not input text" },
+      { type: "unknown", text: "not input text either" },
+    ] };
+    expect(messageText(input)).toBe("  question\n");
+    expect(recentUserText([input])).toBe("question");
+    expect(messageText({ role: "assistant", content: [{ type: "output_text", text: "answer" }] })).toBe("answer");
+  });
   it("extracts text from string and part-array content, last user only", () => {
     const messages = [
       { role: "system", content: "sys" },
