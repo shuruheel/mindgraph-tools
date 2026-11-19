@@ -8,6 +8,30 @@ function memory() {
   return {m,profile};
 }
 describe("profile lifecycle",()=>{
+  it("refreshes Responses input_text profiles and preserves multimodal input",async()=>{
+    const {m,profile}=memory();const calls:any[]=[];
+    const client={responses:{create:async(body:any)=>{calls.push(body);return {};}}};
+    const wrapped=withMindGraph(client,m);
+    const system={role:"system",content:"Keep this instruction.\n"};
+    const user={role:"user",content:[{type:"input_text",text:"  same question\n"},{type:"input_image",image_url:"data:image/png;base64,AA=="}]};
+    await wrapped.responses.create({input:[system,user],instructions:"Keep these too."});
+    expect(profile).toHaveBeenCalledTimes(1);
+    expect(calls[0].input).toHaveLength(3);
+    // A host may carry the injected block back as a Responses text part.
+    const carried=calls[0].input.map((message:any,index:number)=>index===1
+      ? {...message,content:[{type:"input_text",text:message.content}]} : message);
+    await wrapped.responses.create({input:carried,instructions:"Keep these too."});
+    expect(profile).toHaveBeenCalledTimes(2);
+    expect(calls[1].input).toHaveLength(3);
+    expect(JSON.stringify(calls[1].input)).not.toContain("old memory");
+    expect(JSON.stringify(calls[1].input)).toContain("corrected memory");
+    expect(calls[1].input[0]).toEqual(system);
+    expect(calls[1].input.at(-1)).toEqual(user);
+    expect(calls[1].instructions).toBe("Keep these too.");
+    profile.mockResolvedValueOnce({contract:"memory.v1",scope:{space_uid:"space:a"},include_org_space:false,complete:true,omitted:{item_limit:0,text_budget:0,unsafe_summary:0},unavailable:[],context_text:""});
+    await wrapped.responses.create({input:calls[1].input});
+    expect(calls[2].input).toEqual([system,user]);
+  });
   it("refreshes repeated prompts and replaces carried OpenAI messages",async()=>{
     const {m,profile}=memory();const calls: any[]=[];
     const client={chat:{completions:{create:async(body:any)=>{calls.push(body);return {choices:[]};}}}};
