@@ -37,9 +37,10 @@ export interface MindGraphToolsOptions extends CoreOptions {
   /**
    * How many of the latest user messages form the recall query. Default 1: the
    * latest message alone. With more, a follow-up that does not name its subject
-   * ("what caused it?") is searched together with the turns before it. 4 (the
-   * turn and the three before it) is the setting measured on session worlds;
-   * the most is 8. The latest message is always kept whole.
+   * ("what caused it?") is searched together with the turns before it. Use 2
+   * (the message and the one before it): measured, it gains on follow-ups and
+   * costs nothing where the subject changes, and 4 does cost there. The most is
+   * 8. The latest message is always kept whole.
    */
   userMessages?: number;
   /** Observe every recall (including misses as null). */

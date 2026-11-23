@@ -37,10 +37,12 @@ export const USER_MESSAGES_MAX = 8;
  * at `QUERY_MAX_CHARS`.
  *
  * A follow-up that does not name its subject ("what caused it?") finds little
- * on its own; searched together with the turns before it, it finds the subject
- * they named. Measured on CogMemBench session worlds, 2026-11-23, with the turn
- * and the three before it (`count` 4): answer accuracy 0.44 and 0.42 against
- * 0.31 and 0.33 for the latest message alone, in two runs.
+ * on its own; searched together with the turn before it, it finds the subject
+ * that turn named. Measured on CogMemBench sessions that move between
+ * subjects, 2026-11-23: with `count` 2, answer accuracy 0.68 against 0.41 for
+ * the latest message alone, and no loss on the turns that name a new subject.
+ * With `count` 4 those turns fell from 0.78 to 0.65, because the subject the
+ * conversation has left is still in the search. Prefer 2.
  *
  * The latest message is never cut to make room: it takes what it needs of the
  * cap, and the earlier ones share what is left, nearest first. `ignore` leaves

@@ -35,15 +35,17 @@ Options: `mode` (`query` by default; `profile` / `full` require an explicit `spa
 
 ### Follow-up questions: `userMessages`
 
-By default the recall query is the latest user message. A follow-up that does not name its subject ("what caused it?") then searches for words that match many subjects. `userMessages: 4` builds the query from the latest user message and the three before it, so the search carries the subject the conversation named.
+By default the recall query is the latest user message. A follow-up that does not name its subject ("what caused it?") then searches for words that match many subjects. `userMessages: 2` builds the query from the latest user message and the one before it, so the search carries the subject the conversation just named.
 
 ```ts
-const model = withMindGraph(openai("gpt-5.4"), { userMessages: 4 });
+const model = withMindGraph(openai("gpt-5.4"), { userMessages: 2 });
 ```
 
 - The latest message is always kept whole; earlier ones share what is left of the 500-character query, nearest first. The most is 8.
 - Only the query widens. The exchange that is captured is still the latest one.
-- Measured on synthetic ten-turn sessions (CogMemBench, 2026-11-23, two runs): answer accuracy 0.44 and 0.42 with the setting against 0.31 and 0.33 without. The gain was on follow-ups; turns that name their subject were unchanged. It has not been measured on real conversations, where a change of topic would carry the old one into the search for a few turns, so it is off by default.
+- **Use 2, not more.** Measured on synthetic sessions that move between subjects (CogMemBench, 2026-11-23, twelve sessions): answer accuracy 0.68 with 2 against 0.41 with the latest message alone, and no loss on the turns that name a new subject (0.88 against 0.78). With 4, those turns fell to 0.65: the subject the conversation has left is still in the search. Follow-ups are where the gain is (0.56 against 0.14).
+- What 2 misses: a follow-up that refers further back than the previous message.
+- It has not been measured on real conversations.
 
 ## OpenAI SDK
 
@@ -72,7 +74,7 @@ export default defineMemory({
 });
 ```
 
-Recall searches with the latest user message and the two before it (`recall: { userMessages }`, default 3; see "Follow-up questions" above).
+Recall searches with the latest user message and the two before it (`recall: { userMessages }`, default 3; see "Follow-up questions" above: 2 and 4 have been measured, 3 has not).
 
 Copy `node_modules/mindgraph-eve/skill/SKILL.md` to `agent/skills/mindgraph/SKILL.md` so the model knows when to use the tools. Isolation: `scope: "shared"` (default) keeps one org graph and namespaces `custom_id`s by eve's scope key; `scope: "agent-space"` writes to the agent's private Space, which is isolated for reads only when Space enforcement is on and the API key is bound to that agent.
 
