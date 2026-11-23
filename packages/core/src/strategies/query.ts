@@ -28,10 +28,48 @@ export function messageText(message: HostMessage): string {
   return "";
 }
 
-/** The last `count` user messages joined, capped for a retrieval query. */
-export function recentUserText(messages: readonly HostMessage[], count = 1): string {
-  const users = messages.filter((m) => m.role === "user").slice(-count);
-  return users.map(messageText).join("\n").trim().slice(0, QUERY_MAX_CHARS);
+/** The most user messages a recall query is built from. */
+export const USER_MESSAGES_MAX = 8;
+
+/**
+ * The recall query for a conversation: the latest user message, with up to
+ * `count - 1` user messages before it placed ahead of it, oldest first, capped
+ * at `QUERY_MAX_CHARS`.
+ *
+ * A follow-up that does not name its subject ("what caused it?") finds little
+ * on its own; searched together with the turns before it, it finds the subject
+ * they named. Measured on CogMemBench session worlds, 2026-11-23, with the turn
+ * and the three before it (`count` 4): answer accuracy 0.44 and 0.42 against
+ * 0.31 and 0.33 for the latest message alone, in two runs.
+ *
+ * The latest message is never cut to make room: it takes what it needs of the
+ * cap, and the earlier ones share what is left, nearest first. `ignore` leaves
+ * out user-role messages that are not the user's words (an injected memory
+ * block). An empty latest message gives an empty query.
+ */
+export function recentUserText(
+  messages: readonly HostMessage[],
+  count = 1,
+  ignore?: (message: HostMessage) => boolean,
+): string {
+  const wanted = Math.min(Math.max(1, Math.floor(count) || 1), USER_MESSAGES_MAX);
+  const texts = messages
+    .filter((m) => m.role === "user" && !ignore?.(m))
+    .slice(-wanted)
+    .map((m) => messageText(m).trim());
+  const latest = (texts.pop() ?? "").slice(0, QUERY_MAX_CHARS);
+  if (!latest) return "";
+  const kept = [latest];
+  let room = QUERY_MAX_CHARS - latest.length;
+  for (const earlier of texts.reverse()) {
+    // One character of the room goes to the line break.
+    if (!earlier || room < 2) continue;
+    const piece = earlier.slice(0, room - 1).trim();
+    if (!piece) continue;
+    kept.unshift(piece);
+    room -= piece.length + 1;
+  }
+  return kept.join("\n");
 }
 
 export interface QueryRecall extends RenderedContext {

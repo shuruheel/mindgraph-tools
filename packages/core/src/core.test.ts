@@ -89,6 +89,38 @@ describe("messages", () => {
     expect(recentUserText(messages)).toBe("second");
     expect(recentUserText(messages, 2)).toBe("first\nsecond");
   });
+  it("builds a conversation query that never cuts the latest message", () => {
+    const user = (content: string) => ({ role: "user", content });
+    const turns = [user("who owns checkout?"), user("what is its pool size?"), user("what caused its last incident?")];
+    expect(recentUserText(turns, 3)).toBe("who owns checkout?\nwhat is its pool size?\nwhat caused its last incident?");
+    // More than there are, zero, a fraction and nonsense all mean a sane count.
+    expect(recentUserText(turns, 99)).toBe(recentUserText(turns, 3));
+    expect(recentUserText(turns, 0)).toBe("what caused its last incident?");
+    expect(recentUserText(turns, 2.9)).toBe("what is its pool size?\nwhat caused its last incident?");
+    expect(recentUserText(turns, Number.NaN)).toBe("what caused its last incident?");
+    expect(recentUserText(Array.from({ length: 20 }, (_, i) => user(`m${i}`)), 99).split("\n")).toHaveLength(8);
+
+    // Long earlier turns give way; the latest is whole and last.
+    const long = [user("a".repeat(400)), user("b".repeat(400)), user("the question")];
+    const query = recentUserText(long, 3);
+    expect(query.length).toBeLessThanOrEqual(500);
+    expect(query.endsWith("\nthe question")).toBe(true);
+    // The nearer earlier turn is served first; the older one gets what is left.
+    expect(query).toBe(`${"a".repeat(86)}\n${"b".repeat(400)}\nthe question`);
+    expect(query).toHaveLength(500);
+    // When the nearer one takes all of it, the older one is left out.
+    expect(recentUserText([user("a".repeat(400)), user("b".repeat(600)), user("the question")], 3))
+      .toBe(`${"b".repeat(487)}\nthe question`);
+    // A latest message at the cap leaves no room, and is still not displaced.
+    expect(recentUserText([user("earlier"), user("q".repeat(900))], 2)).toBe("q".repeat(500));
+
+    // An empty latest message is no query, whatever came before it.
+    expect(recentUserText([user("earlier"), { role: "user", content: [{ type: "file", data: "x" }] }], 3)).toBe("");
+    // An empty earlier turn is skipped, and so is a user-role message that is not the user's words.
+    expect(recentUserText([user("one"), user("  "), user("three")], 3)).toBe("one\nthree");
+    const injected = (m: { content: unknown }) => String(m.content).startsWith("<memory>");
+    expect(recentUserText([user("one"), user("<memory>recalled</memory>"), user("three")], 2, injected)).toBe("one\nthree");
+  });
 });
 
 describe("captureExchange", () => {

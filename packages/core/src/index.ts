@@ -16,6 +16,7 @@ export {
   recentUserText,
   recallByQuery,
   QUERY_MAX_CHARS,
+  USER_MESSAGES_MAX,
   type HostMessage,
   type QueryRecall,
 } from "./strategies/query.js";
