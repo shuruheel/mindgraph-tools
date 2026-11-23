@@ -1,5 +1,13 @@
-import { wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware } from "ai";
-import { messageText, type HostMessage } from "mindgraph-agent-core";
+import { jsonSchema, tool, wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware, type Tool } from "ai";
+import {
+  messageText,
+  NAVIGATE_DESCRIPTION,
+  NAVIGATE_INPUT_SCHEMA,
+  NAVIGATE_TOOL_NAME,
+  type HostMessage,
+  type NavigateInput,
+  type NavigateOutput,
+} from "mindgraph-agent-core";
 import { MindGraphMemory, injectMemory, removeProfileMemory, type MindGraphToolsOptions } from "./memory.js";
 
 type PromptMessage = HostMessage & { role: "system" | "user" | "assistant" | "tool" };
@@ -99,6 +107,41 @@ export function withMindGraph(
     model: model as Parameters<typeof wrapLanguageModel>[0]["model"],
     middleware: mindGraphMiddleware(options),
   }) as LanguageModel;
+}
+
+export interface MindGraphToolsetOptions {
+  /**
+   * The conversation these tools serve. The working-set and continuation
+   * tokens are held per session, so build the tools per conversation or pass
+   * its id. Default `"default"`: one session for every call.
+   */
+  sessionId?: string;
+}
+
+/**
+ * `mindGraphTools(memory)` — MindGraph tools for an AI SDK `tools` map:
+ * `mindgraph_navigate`, one move of `POST /navigate` per call. The model
+ * reads the rendered text; the tool result also carries the server's JSON.
+ *
+ * ```ts
+ * const memory = new MindGraphMemory({ agentId: "support-bot" });
+ * await generateText({ model, tools: mindGraphTools(memory, { sessionId: chatId }), prompt });
+ * ```
+ */
+export function mindGraphTools(
+  options: MindGraphToolsOptions | MindGraphMemory = {},
+  toolset: MindGraphToolsetOptions = {},
+): Record<typeof NAVIGATE_TOOL_NAME, Tool<NavigateInput, NavigateOutput>> {
+  const memory = options instanceof MindGraphMemory ? options : new MindGraphMemory(options);
+  const session = toolset.sessionId ?? "default";
+  return {
+    [NAVIGATE_TOOL_NAME]: tool<NavigateInput, NavigateOutput>({
+      description: NAVIGATE_DESCRIPTION,
+      inputSchema: jsonSchema<NavigateInput>(NAVIGATE_INPUT_SCHEMA as unknown as Parameters<typeof jsonSchema>[0]),
+      execute: (input) => memory.navigator.run(input, session),
+      toModelOutput: ({ output }) => ({ type: "text", value: output.text }),
+    }),
+  };
 }
 
 export { MindGraphMemory, type MindGraphToolsOptions } from "./memory.js";

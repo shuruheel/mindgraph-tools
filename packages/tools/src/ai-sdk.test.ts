@@ -1,7 +1,7 @@
-import { generateText, streamText } from "ai";
+import { generateText, stepCountIs, streamText } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MindGraphMemory, withMindGraph } from "./ai-sdk.js";
+import { MindGraphMemory, mindGraphTools, withMindGraph } from "./ai-sdk.js";
 
 type Captured = { url: string; body: any };
 let captured: Captured[] = [];
@@ -237,5 +237,50 @@ describe("withMindGraph (AI SDK)", () => {
     expect(prompt.map((m) => m.role)).toEqual(["system", "user"]);
     expect(prompt[0]!.content).toContain("Be brief.");
     expect(prompt[0]!.content).toContain("<mindgraph-memory>");
+  });
+});
+
+describe("mindGraphTools (AI SDK)", () => {
+  it("runs mindgraph_navigate in a tool loop and gives the model the rendered text", async () => {
+    stubFetch((url) =>
+      url.endsWith("/navigate")
+        ? { move: "search", state: "found", shown: 1, items: [], next: [], text: "search for \"rollback\" · 1 items shown" }
+        : contextResponse,
+    );
+    let step = 0;
+    const model = new MockLanguageModelV3({
+      doGenerate: (async () => {
+        step += 1;
+        const usage = { inputTokens: 1, outputTokens: 1, totalTokens: 2 };
+        return step === 1
+          ? {
+              content: [
+                {
+                  type: "tool-call",
+                  toolCallId: "call-1",
+                  toolName: "mindgraph_navigate",
+                  input: JSON.stringify({ move: "search", query: "rollback" }),
+                },
+              ],
+              finishReason: "tool-calls",
+              usage,
+              warnings: [],
+            }
+          : { content: [{ type: "text", text: "Rolled back." }], finishReason: "stop", usage, warnings: [] };
+      }) as any,
+    });
+    const memory = new MindGraphMemory(options);
+    const result = await generateText({
+      model,
+      tools: mindGraphTools(memory, { sessionId: "chat-1" }),
+      stopWhen: stepCountIs(2),
+      prompt: "what happened to the rollback?",
+    });
+    expect(result.text).toBe("Rolled back.");
+    const nav = captured.find((c) => c.url.endsWith("/navigate"))!;
+    expect(nav.body).toEqual({ action: "search", query: "rollback" });
+    const toolMessage = model.doGenerateCalls[1]!.prompt.find((m) => m.role === "tool")!;
+    expect(JSON.stringify(toolMessage.content)).toContain("1 items shown");
+    expect(JSON.stringify(toolMessage.content)).not.toContain("\"items\"");
   });
 });

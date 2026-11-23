@@ -34,4 +34,16 @@ export {
 export { CaptureQueue, type QueueOptions } from "./queue.js";
 export { captureRecap, recapFromMessages, type RecapInput, type RecapReceipt } from "./recap.js";
 
+export {
+  Navigator,
+  renderWorkingSet,
+  NAVIGATE_DESCRIPTION,
+  NAVIGATE_INPUT_SCHEMA,
+  NAVIGATE_MOVES,
+  NAVIGATE_TOOL_NAME,
+  type NavigateInput,
+  type NavigateMove,
+  type NavigateOutput,
+} from "./navigate.js";
+
 export type MemoryMode = "query" | "profile" | "full";

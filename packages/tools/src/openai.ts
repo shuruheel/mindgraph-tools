@@ -1,4 +1,11 @@
-import { messageText, type HostMessage } from "mindgraph-agent-core";
+import {
+  messageText,
+  NAVIGATE_DESCRIPTION,
+  NAVIGATE_INPUT_SCHEMA,
+  NAVIGATE_TOOL_NAME,
+  type HostMessage,
+  type NavigateInput,
+} from "mindgraph-agent-core";
 import { MindGraphMemory, injectMemory, removeProfileMemory, stripProfileText, type MindGraphToolsOptions } from "./memory.js";
 
 /**
@@ -152,6 +159,66 @@ export function withMindGraph<T extends OpenAILikeClient>(
       return typeof value === "function" ? value.bind(target) : value;
     },
   });
+}
+
+export interface MindGraphFunctions {
+  /** For `chat.completions.create({ tools })`. */
+  chatTools: Array<{
+    type: "function";
+    function: { name: string; description: string; parameters: Record<string, unknown> };
+  }>;
+  /** For `responses.create({ tools })`. */
+  responsesTools: Array<{
+    type: "function";
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+    strict: false;
+  }>;
+  /**
+   * Run a function call the model made. Returns the text to send back as the
+   * function's output, or `null` when the call is not one of these tools.
+   * Never throws: a failed move returns its error as text.
+   */
+  call(name: string, args: string | Record<string, unknown>): Promise<string | null>;
+}
+
+/**
+ * `mindGraphFunctions(memory)` — MindGraph tools as OpenAI function tools:
+ * `mindgraph_navigate`, one move of `POST /navigate` per call. The tokens a
+ * move returns are held per session (`sessionId`, default `"default"`), so
+ * build these per conversation or pass its id.
+ */
+export function mindGraphFunctions(
+  options: MindGraphToolsOptions | MindGraphMemory = {},
+  toolset: { sessionId?: string } = {},
+): MindGraphFunctions {
+  const memory = options instanceof MindGraphMemory ? options : new MindGraphMemory(options);
+  const session = toolset.sessionId ?? "default";
+  const parameters = NAVIGATE_INPUT_SCHEMA as unknown as Record<string, unknown>;
+  return {
+    chatTools: [
+      { type: "function", function: { name: NAVIGATE_TOOL_NAME, description: NAVIGATE_DESCRIPTION, parameters } },
+    ],
+    responsesTools: [
+      { type: "function", name: NAVIGATE_TOOL_NAME, description: NAVIGATE_DESCRIPTION, parameters, strict: false },
+    ],
+    async call(name, args) {
+      if (name !== NAVIGATE_TOOL_NAME) return null;
+      let input: unknown = args;
+      if (typeof args === "string") {
+        try {
+          input = JSON.parse(args);
+        } catch {
+          return "MindGraph navigation failed: the arguments are not valid JSON.";
+        }
+      }
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
+        return "MindGraph navigation failed: the arguments must be an object.";
+      }
+      return (await memory.navigator.run(input as NavigateInput, session)).text;
+    },
+  };
 }
 
 export { MindGraphMemory, type MindGraphToolsOptions } from "./memory.js";

@@ -5,6 +5,7 @@ import {
   captureRecap,
   createClient,
   messageText,
+  Navigator,
   recallByQuery,
   recentUserText,
   recallProfile,
@@ -60,6 +61,7 @@ export class MindGraphMemory {
   readonly options: MindGraphToolsOptions;
   private lastRecall: { hash: string; text: string | null } = { hash: "", text: null };
   private readonly queue: CaptureQueue<Exchange>;
+  private nav: Navigator | undefined;
 
   constructor(options: MindGraphToolsOptions = {}) {
     this.options = options;
@@ -138,6 +140,15 @@ export class MindGraphMemory {
     if (this.options.capture === false) return;
     if (!exchange.assistant.trim()) return;
     this.queue.push(exchange);
+  }
+
+  /**
+   * The `mindgraph_navigate` moves for this door's client. It holds the
+   * working-set and continuation tokens of each session it is given.
+   */
+  get navigator(): Navigator {
+    this.nav ??= new Navigator(this.client, this.resolved);
+    return this.nav;
   }
 
   /** Flush queued captures; call from `waitUntil` on serverless hosts. */

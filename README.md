@@ -4,8 +4,8 @@ Doors into [MindGraph](https://mindgraph.cloud) memory for the frameworks agents
 
 | Package | What |
 |---|---|
-| `mindgraph-tools` | `withMindGraph(model)` for the **Vercel AI SDK** (middleware) and `withMindGraph(openai)` for the **OpenAI SDK** (client proxy): recall before the call, capture after it, fail-open in 5 s. |
-| `mindgraph-eve` | `mindgraphMemory()` — a memory provider for **eve** (`defineMemory({ provider })`): recall on `turn.started`, capture on `turn.completed`, compaction recaps as Session traces, `search` / `remember` / `forget` / `resume` tools. |
+| `mindgraph-tools` | `withMindGraph(model)` for the **Vercel AI SDK** (middleware) and `withMindGraph(openai)` for the **OpenAI SDK** (client proxy): recall before the call, capture after it, fail-open in 5 s. `mindGraphTools()` / `mindGraphFunctions()` give the model the `mindgraph_navigate` tool. |
+| `mindgraph-eve` | `mindgraphMemory()` — a memory provider for **eve** (`defineMemory({ provider })`): recall on `turn.started`, capture on `turn.completed`, compaction recaps as Session traces, `search` / `navigate` / `remember` / `forget` / `resume` tools. |
 | `mindgraph-agent-core` | The shared engine: bounded recall (`/retrieve/context`), idempotent capture (`/memory/remember` with a deterministic `custom_id`), rendering, batching, recap persistence. |
 
 Memory written through any door lands in the same typed, versioned, cited graph the dashboard, SDKs and MCP server use — with provenance, history and Space/Project access control. Nothing here is a black box: every memory has a uid you can open.
@@ -58,6 +58,32 @@ const r = await openai.responses.create({ model: "gpt-5.4", input: "Where do we 
 ```
 
 Wraps `chat.completions.create` and `responses.create` (streaming included); everything else on the client passes through.
+
+## Navigation tool: `mindgraph_navigate`
+
+Recall puts a bounded block in front of the model. When the model needs to follow evidence step by step, give it `mindgraph_navigate`, the same tool the MCP server offers: one `move` per call over `POST /navigate` (`search`, `walk`, `follow`, `around`, `open`, `lookup`, `more`, `context`, and `check` where the server has it). Results are text written for the model, with handles (`n:<uid>`, `c:<uid>`, …) to pass to the next move. The door holds the working-set token of `context` and the continuation of the last move per session, so the model carries neither; build the tools per conversation or pass its id. Every move is a read. Needs a server with `POST /navigate`.
+
+```ts
+// Vercel AI SDK
+import { MindGraphMemory, mindGraphTools, withMindGraph } from "mindgraph-tools";
+const memory = new MindGraphMemory({ agentId: "support-bot" });
+await generateText({
+  model: withMindGraph(openai("gpt-5.4"), memory),
+  tools: mindGraphTools(memory, { sessionId: chatId }),
+  stopWhen: stepCountIs(8),
+  prompt,
+});
+
+// OpenAI SDK
+import { mindGraphFunctions } from "mindgraph-tools/openai";
+const mg = mindGraphFunctions(memory, { sessionId: chatId });
+const r = await openai.responses.create({ model: "gpt-5.4", input, tools: mg.responsesTools });
+for (const call of r.output.filter((o) => o.type === "function_call")) {
+  const output = await mg.call(call.name, call.arguments); // null when the call is not ours
+}
+```
+
+`chatTools` is the same tool for `chat.completions.create`. A failed move comes back as text with its reason; the tools never throw.
 
 ## eve
 
