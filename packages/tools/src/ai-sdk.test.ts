@@ -161,15 +161,24 @@ describe("withMindGraph (AI SDK)", () => {
     ];
     const queries = () => captured.filter((c) => c.url.endsWith("/retrieve/context")).map((c) => c.body.query);
 
-    // Default: the latest message alone, as before.
-    const plain = new MindGraphMemory({ ...options, capture: false });
-    await generateText({ model: withMindGraph(mockModel(), plain), messages: conversation });
+    // `userMessages: 1` is the latest message alone.
+    const alone = new MindGraphMemory({ ...options, userMessages: 1, capture: false });
+    await generateText({ model: withMindGraph(mockModel(), alone), messages: conversation });
     expect(queries()).toEqual(["What caused its last incident?"]);
 
-    const memory = new MindGraphMemory({ ...options, userMessages: 4 });
+    // The default is the latest message and the one before it.
+    const memory = new MindGraphMemory(options);
     const model = mockModel();
     await generateText({ model: withMindGraph(model, memory), messages: conversation });
     expect(queries()[1]).toBe("Who owns the checkout service?\nWhat caused its last incident?");
+    // ...and no further back than that.
+    const longer = [
+      { role: "user" as const, content: "Who owns the ledger service?" },
+      { role: "assistant" as const, content: "Milan." },
+      ...conversation,
+    ];
+    await generateText({ model: withMindGraph(mockModel(), new MindGraphMemory({ ...options, capture: false })), messages: longer });
+    expect(queries()[2]).toBe("Who owns the checkout service?\nWhat caused its last incident?");
     // The injected block still sits right before the latest user message.
     const prompt = model.doGenerateCalls[0]!.prompt;
     expect(prompt.map((m) => m.role)).toEqual(["user", "assistant", "user", "user"]);
@@ -186,7 +195,7 @@ describe("withMindGraph (AI SDK)", () => {
       conversation[2]!,
     ];
     await generateText({ model: withMindGraph(mockModel(), new MindGraphMemory({ ...options, userMessages: 4, capture: false })), messages: echoed });
-    expect(queries()[2]).toBe("Who owns the checkout service?\nWhat caused its last incident?");
+    expect(queries()[3]).toBe("Who owns the checkout service?\nWhat caused its last incident?");
   });
 
   it("captures streamed text after the stream finishes", async () => {

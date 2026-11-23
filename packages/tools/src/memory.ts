@@ -20,6 +20,8 @@ import {
 
 export const MEMORY_OPEN = "<mindgraph-memory>";
 export const MEMORY_CLOSE = "</mindgraph-memory>";
+/** User messages in the recall query when `userMessages` is not set. */
+export const DEFAULT_USER_MESSAGES = 2;
 
 export interface MindGraphToolsOptions extends CoreOptions {
   /** `query` (default) recalls by the latest user message; `profile`/`full` require an explicit Space and memory.v1-capable SDK/server. */
@@ -35,12 +37,12 @@ export interface MindGraphToolsOptions extends CoreOptions {
   /** Graph nodes to ask for (default 12). */
   nodeLimit?: number;
   /**
-   * How many of the latest user messages form the recall query. Default 1: the
-   * latest message alone. With more, a follow-up that does not name its subject
-   * ("what caused it?") is searched together with the turns before it. Use 2
-   * (the message and the one before it): measured, it gains on follow-ups and
-   * costs nothing where the subject changes, and 4 does cost there. The most is
-   * 8. The latest message is always kept whole.
+   * How many of the latest user messages form the recall query. Default 2: the
+   * latest message and the one before it, so a follow-up that does not name its
+   * subject ("what caused it?") is searched together with the turn that did.
+   * Measured, 2 gains on follow-ups and costs nothing where the subject
+   * changes; 4 does cost there. 1 is the latest message alone. The most is 8.
+   * The latest message is always kept whole.
    */
   userMessages?: number;
   /** Observe every recall (including misses as null). */
@@ -97,7 +99,11 @@ export class MindGraphMemory {
    * blocks are not the user's words and are left out.
    */
   queryFor(messages: readonly HostMessage[]): string {
-    return recentUserText(messages, this.options.userMessages ?? 1, MindGraphMemory.isInjected);
+    return recentUserText(
+      messages,
+      this.options.userMessages ?? DEFAULT_USER_MESSAGES,
+      MindGraphMemory.isInjected,
+    );
   }
 
   /** Recall for a user text, cached by content hash. Returns the rendered block or null. */
