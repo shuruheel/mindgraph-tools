@@ -1,7 +1,7 @@
 {
   "name": "mindgraph-eve",
   "version": "0.2.0",
-  "description": "MindGraph memory provider for eve (Vercel): recall before each turn, capture after it, compaction recaps as Session traces, search/remember/forget/resume tools",
+  "description": "MindGraph memory provider for eve (Vercel): recall before each turn, capture after it, compaction recaps as Session traces, search/navigate/remember/forget/resume tools",
   "license": "MIT",
   "repository": {"type": "git", "url": "git+https://github.com/shuruheel/mindgraph-tools.git", "directory": "packages/eve"},
   "type": "module",
