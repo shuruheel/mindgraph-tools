@@ -6,6 +6,7 @@ import {
   createClient,
   messageText,
   recallByQuery,
+  recentUserText,
   recallProfile,
   resolveOptions,
   sha256Hex,
@@ -33,6 +34,14 @@ export interface MindGraphToolsOptions extends CoreOptions {
   maxChars?: number;
   /** Graph nodes to ask for (default 12). */
   nodeLimit?: number;
+  /**
+   * How many of the latest user messages form the recall query. Default 1: the
+   * latest message alone. With more, a follow-up that does not name its subject
+   * ("what caused it?") is searched together with the turns before it. 4 (the
+   * turn and the three before it) is the setting measured on session worlds;
+   * the most is 8. The latest message is always kept whole.
+   */
+  userMessages?: number;
   /** Observe every recall (including misses as null). */
   onRecall?: (recall: QueryRecall | null, query: string) => void;
 }
@@ -79,6 +88,15 @@ export class MindGraphMemory {
       if (m.role === "user" && !MindGraphMemory.isInjected(m)) return i;
     }
     return -1;
+  }
+
+  /**
+   * The recall query for a conversation: the latest real user message, with
+   * the ones before it when `userMessages` asks for them. Injected memory
+   * blocks are not the user's words and are left out.
+   */
+  queryFor(messages: readonly HostMessage[]): string {
+    return recentUserText(messages, this.options.userMessages ?? 1, MindGraphMemory.isInjected);
   }
 
   /** Recall for a user text, cached by content hash. Returns the rendered block or null. */

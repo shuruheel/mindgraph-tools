@@ -93,6 +93,29 @@ describe("withMindGraph (OpenAI)", () => {
     expect(wrapped.models.list()).toBe("models");
   });
 
+  it("userMessages widens the recall query on chat.completions and responses", async () => {
+    const queries = () => captured.filter((c) => c.url.endsWith("/retrieve/context")).map((c) => c.body.query);
+    const wrapped = withMindGraph(fakeClient(), new MindGraphMemory({ ...options, userMessages: 3, capture: false }));
+    await wrapped.chat.completions.create({
+      model: "gpt-5.4",
+      messages: [
+        { role: "user", content: "Who owns the checkout service?" },
+        { role: "assistant", content: "Dana." },
+        { role: "user", content: "What caused its last incident?" },
+      ],
+    });
+    expect(queries()).toEqual(["Who owns the checkout service?\nWhat caused its last incident?"]);
+    await wrapped.responses.create({
+      model: "gpt-5.4",
+      input: [
+        { role: "user", content: "Who owns the ledger service?" },
+        { role: "assistant", content: "Milan." },
+        { role: "user", content: [{ type: "input_text", text: "And its pool size?" }] },
+      ],
+    });
+    expect(queries()[1]).toBe("Who owns the ledger service?\nAnd its pool size?");
+  });
+
   it("captures a streamed chat completion after iteration", async () => {
     const client = fakeClient();
     const memory = new MindGraphMemory(options);

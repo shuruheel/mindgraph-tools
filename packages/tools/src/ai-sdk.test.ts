@@ -152,6 +152,43 @@ describe("withMindGraph (AI SDK)", () => {
     expect(captured.filter((c) => c.url.endsWith("/retrieve/context"))).toHaveLength(2);
   });
 
+  it("userMessages searches a follow-up together with the turns before it, and not with injected memory", async () => {
+    stubFetch((url) => (url.endsWith("/retrieve/context") ? contextResponse : { uid: "m1", action: "inserted" }));
+    const conversation = [
+      { role: "user" as const, content: "Who owns the checkout service?" },
+      { role: "assistant" as const, content: "Dana." },
+      { role: "user" as const, content: "What caused its last incident?" },
+    ];
+    const queries = () => captured.filter((c) => c.url.endsWith("/retrieve/context")).map((c) => c.body.query);
+
+    // Default: the latest message alone, as before.
+    const plain = new MindGraphMemory({ ...options, capture: false });
+    await generateText({ model: withMindGraph(mockModel(), plain), messages: conversation });
+    expect(queries()).toEqual(["What caused its last incident?"]);
+
+    const memory = new MindGraphMemory({ ...options, userMessages: 4 });
+    const model = mockModel();
+    await generateText({ model: withMindGraph(model, memory), messages: conversation });
+    expect(queries()[1]).toBe("Who owns the checkout service?\nWhat caused its last incident?");
+    // The injected block still sits right before the latest user message.
+    const prompt = model.doGenerateCalls[0]!.prompt;
+    expect(prompt.map((m) => m.role)).toEqual(["user", "assistant", "user", "user"]);
+    // Only the latest exchange is captured, not the widened query.
+    await memory.flush();
+    expect(captured.find((c) => c.url.endsWith("/memory/remember"))!.body.text).toBe(
+      "User: What caused its last incident?\nAssistant: Deploy to mg-prod.",
+    );
+
+    // A host that sends the injected block back does not have it searched.
+    const echoed = [
+      conversation[0]!,
+      { role: "user" as const, content: "<mindgraph-memory>\n- [Entity] mg-prod\n</mindgraph-memory>" },
+      conversation[2]!,
+    ];
+    await generateText({ model: withMindGraph(mockModel(), new MindGraphMemory({ ...options, userMessages: 4, capture: false })), messages: echoed });
+    expect(queries()[2]).toBe("Who owns the checkout service?\nWhat caused its last incident?");
+  });
+
   it("captures streamed text after the stream finishes", async () => {
     stubFetch((url) => (url.endsWith("/retrieve/context") ? { graph: { nodes: [], edges: [] } } : { uid: "m1", action: "inserted" }));
     const memory = new MindGraphMemory(options);

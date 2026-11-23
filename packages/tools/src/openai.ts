@@ -94,7 +94,7 @@ export function withMindGraph<T extends OpenAILikeClient>(
     const original = client.chat!.completions.create;
     const messages: ChatMessage[] = removeProfileMemory(Array.isArray(body?.messages) ? body.messages : []);
     const user = lastUserText(messages);
-    const block = await memory.recall(user);
+    const block = await memory.recall(memory.queryFor(messages));
     const nextBody = block
       ? { ...body, messages: injectMemory(messages, block, inject, asUser, appendSystem, asSystem) }
       : { ...body, messages };
@@ -117,7 +117,7 @@ export function withMindGraph<T extends OpenAILikeClient>(
     };
     const messages = responseInputToMessages(body?.input);
     const user = lastUserText(messages);
-    const block = await memory.recall(user);
+    const block = await memory.recall(memory.queryFor(messages));
     let nextBody = body;
     if (block) {
       if (inject === "system") {

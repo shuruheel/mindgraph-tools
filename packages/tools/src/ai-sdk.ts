@@ -35,8 +35,7 @@ export function mindGraphMiddleware(
     specificationVersion: "v3",
     transformParams: async ({ params }) => {
       const prompt = removeProfileMemory((params.prompt ?? []) as unknown as PromptMessage[]);
-      const userText = lastUser(prompt);
-      const block = await memory.recall(userText);
+      const block = await memory.recall(memory.queryFor(prompt));
       if (!block) return { ...params, prompt: prompt as unknown as typeof params.prompt };
       const next = injectMemory<PromptMessage>(
         prompt,
