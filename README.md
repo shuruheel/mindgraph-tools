@@ -74,7 +74,7 @@ export default defineMemory({
 });
 ```
 
-Recall searches with the latest user message and the two before it (`recall: { userMessages }`, default 3; see "Follow-up questions" above). Measured the same way as 2 and 4: with 3, answer accuracy rose from 0.41 to 0.64, and the turns that name a new subject fell from 0.79 to 0.72, a narrow loss that 2 did not show. `recall: { userMessages: 2 }` is the setting with no measured cost.
+Recall searches with the latest user message and the one before it (`recall: { userMessages }`, default 2; see "Follow-up questions" above). With 3, measured the same way, answer accuracy rose from 0.41 to 0.64 and the turns that name a new subject fell from 0.79 to 0.72, a narrow loss that 2 did not show.
 
 Copy `node_modules/mindgraph-eve/skill/SKILL.md` to `agent/skills/mindgraph/SKILL.md` so the model knows when to use the tools. Isolation: `scope: "shared"` (default) keeps one org graph and namespaces `custom_id`s by eve's scope key; `scope: "agent-space"` writes to the agent's private Space, which is isolated for reads only when Space enforcement is on and the API key is bound to that agent.
 

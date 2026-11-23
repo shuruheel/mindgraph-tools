@@ -27,6 +27,14 @@ export type { MemoryProvider, MemoryOperationContext, MemoryToolSet } from "./ev
 export const RECAP_MESSAGE_ID = "mindgraph:recap";
 export const TOPIC_MESSAGE_ID = "mindgraph:topic";
 
+/**
+ * User messages in the recall query when `recall.userMessages` is not set: the
+ * latest and the one before it. Measured on sessions that move between
+ * subjects, 2 gained on follow-ups with no loss where the subject changes; 3
+ * and 4 lost there.
+ */
+export const DEFAULT_USER_MESSAGES = 2;
+
 export interface MindGraphEveOptions extends CoreOptions {
   /**
    * `shared` (default): every scope reads and writes the org graph; the
@@ -120,7 +128,7 @@ export function mindgraphMemory(options: MindGraphEveOptions = {}): MemoryProvid
 
   async function topic(context: MemoryOperationContext): Promise<MemoryRecallMessage | null> {
     if (!recallOpts) return null;
-    const query = recentUserText(context.messages, recallOpts.userMessages ?? 3);
+    const query = recentUserText(context.messages, recallOpts.userMessages ?? DEFAULT_USER_MESSAGES);
     const recall = await recallByQuery(client, { ...resolved }, query, {
       nodeLimit: recallOpts.nodeLimit,
       maxChars: recallOpts.maxChars,

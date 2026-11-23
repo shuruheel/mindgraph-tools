@@ -52,6 +52,24 @@ describe("mindgraphMemory", () => {
     expect(captured[0]!.body).toMatchObject({ query: "Where do we deploy?", chunk_limit: 0, include_graph: true });
   });
 
+  it("recall searches with the latest user message and the one before it by default", async () => {
+    const messages = [
+      { role: "user", content: "Who owns the ledger service?" },
+      { role: "assistant", content: "Milan." },
+      { role: "user", content: "Who owns the checkout service?" },
+      { role: "assistant", content: "Dana." },
+      { role: "user", content: "What caused its last incident?" },
+    ];
+    await mindgraphMemory(options).recall["turn.started"](ctx({ messages }));
+    expect(captured[0]!.body.query).toBe("Who owns the checkout service?\nWhat caused its last incident?");
+    await mindgraphMemory({ ...options, recall: { userMessages: 3 } }).recall["turn.started"](ctx({ messages }));
+    expect(captured[1]!.body.query).toBe(
+      "Who owns the ledger service?\nWho owns the checkout service?\nWhat caused its last incident?",
+    );
+    await mindgraphMemory({ ...options, recall: { userMessages: 1 } }).recall["turn.started"](ctx({ messages }));
+    expect(captured[2]!.body.query).toBe("What caused its last incident?");
+  });
+
   it("recall returns null when nothing is found or memory is down", async () => {
     stubFetch({ graph: { nodes: [], edges: [] } });
     expect(await mindgraphMemory(options).recall["turn.started"](ctx())).toBeNull();
