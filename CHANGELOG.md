@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-`mindgraph-tools`: new option `userMessages` on `withMindGraph` (AI SDK and OpenAI). It sets how many of the latest user messages form the recall query; the default, 1, is the latest message alone, as before. With 4, a follow-up that does not name its subject is searched together with the three turns before it. On synthetic ten-turn sessions this raised answer accuracy from 0.31 and 0.33 to 0.44 and 0.42 in two runs. Off by default: it has not been measured on real conversations.
+`mindgraph-tools`: new option `userMessages` on `withMindGraph` (AI SDK and OpenAI). It sets how many of the latest user messages form the recall query; the default, 1, is the latest message alone, as before. With 2, a follow-up that does not name its subject is searched together with the message before it. On synthetic sessions that move between subjects this raised answer accuracy from 0.41 to 0.68 with no loss on the turns that name a new subject; with 4 those turns lost 12 points, so 2 is the setting to use. Not measured on real conversations.
 
 `mindgraph-eve`, `mindgraph-agent-core`: a recall query built from several user messages no longer loses the latest one. The query was the messages joined and cut at 500 characters from the start, so long earlier messages could push the current question out of the search. The latest message is now kept whole, earlier ones share what is left, nearest first, and messages with no text are skipped. `mindgraph-eve` builds its query from three messages by default, so this changes its queries when earlier messages are long. `recentUserText` takes an optional third argument to leave out user-role messages that are not the user's words, and at most 8 messages.
 
