@@ -108,7 +108,7 @@ describe("mindgraphMemory", () => {
   it("exposes search, remember, forget (dry-run by default) and resume tools", async () => {
     const provider = mindgraphMemory(options);
     const tools = (await provider.tools!({ memory: { scope: { key: "scope-abc", namespace: "ns", value: "u" }, slot: "memory" } }))!;
-    expect(Object.keys(tools).sort()).toEqual(["forget", "remember", "resume", "search"]);
+    expect(Object.keys(tools).sort()).toEqual(["forget", "navigate", "remember", "resume", "search"]);
 
     const search = await (tools.search!.execute as any)({ query: "deploy" });
     expect(search.context).toContain("mg-prod");
@@ -122,6 +122,34 @@ describe("mindgraphMemory", () => {
     expect(forget.body).toMatchObject({ custom_id: "x", dry_run: true });
     await (tools.forget!.execute as any)({ uid: "n1", confirm: true });
     expect(captured.filter((c) => c.url.endsWith("/memory/forget"))[1]!.body).toEqual({ uid: "n1", agent_id: "eve-agent" });
+  });
+
+  it("navigate makes a move and holds the working-set token per eve session", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+        captured.push({ url: String(input), body });
+        const payload = {
+          graph: { nodes: [], edges: [] },
+          context_text: "mg-prod is the deploy target",
+          working_set: { token: `ws1.${captured.length}`, turn: captured.length, entered: [], kept: [], left: [], changed: [], strength: { nothing_strong: false } },
+        };
+        return new Response(JSON.stringify(payload), { status: 200, headers: { "Content-Type": "application/json" } });
+      }),
+    );
+    const provider = mindgraphMemory(options);
+    const tools = (await provider.tools!({ memory: { scope: { key: "scope-abc", namespace: "ns", value: "u" }, slot: "memory" } }))!;
+    const navigate = tools.navigate!.execute as any;
+    const out = await navigate({ move: "context", text: "deploy" }, { session: { id: "sess-1" } });
+    expect(out.text).toContain("mg-prod is the deploy target");
+    await navigate({ move: "context", text: "again" }, { session: { id: "sess-1" } });
+    await navigate({ move: "context", text: "other" }, { session: { id: "sess-2" } });
+    expect(captured.map((c) => [c.url, c.body.token])).toEqual([
+      ["https://mg.invalid/navigate", undefined],
+      ["https://mg.invalid/navigate", "ws1.1"],
+      ["https://mg.invalid/navigate", undefined],
+    ]);
   });
 
   it("can be switched off piecewise", async () => {

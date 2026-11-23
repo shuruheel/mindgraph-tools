@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MindGraphMemory } from "./memory.js";
-import { withMindGraph } from "./openai.js";
+import { mindGraphFunctions, withMindGraph } from "./openai.js";
 
 let captured: { url: string; body: any }[] = [];
 const contextResponse = {
@@ -161,5 +161,29 @@ describe("withMindGraph (OpenAI)", () => {
     expect(events).toHaveLength(3);
     await memory.flush();
     expect(captured.find((c) => c.url.endsWith("/memory/remember"))!.body.text).toContain("Assistant: Deploy to mg-prod.");
+  });
+});
+
+describe("mindGraphFunctions", () => {
+  it("offers mindgraph_navigate for both APIs and runs a call to text", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: unknown, init?: RequestInit) => {
+        captured.push({ url: String(input), body: init?.body ? JSON.parse(String(init.body)) : undefined });
+        return new Response(JSON.stringify({ move: "search", state: "found", items: [], next: [], text: "search · 0 items shown" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+    const fns = mindGraphFunctions({ baseUrl: "https://mg.invalid", apiKey: "mg_test" }, { sessionId: "chat-1" });
+    expect(fns.chatTools[0]!.function.name).toBe("mindgraph_navigate");
+    expect(fns.responsesTools[0]!.name).toBe("mindgraph_navigate");
+    expect(await fns.call("other_tool", "{}")).toBeNull();
+    expect(await fns.call("mindgraph_navigate", JSON.stringify({ move: "search", query: "rollback" }))).toBe(
+      "search · 0 items shown",
+    );
+    expect(captured.at(-1)).toEqual({ url: "https://mg.invalid/navigate", body: { action: "search", query: "rollback" } });
+    expect(await fns.call("mindgraph_navigate", "{not json")).toContain("not valid JSON");
   });
 });

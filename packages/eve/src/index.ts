@@ -4,6 +4,9 @@ import {
   createClient,
   failOpen,
   messageText,
+  Navigator,
+  NAVIGATE_DESCRIPTION,
+  NAVIGATE_INPUT_SCHEMA,
   recallByQuery,
   recapFromMessages,
   recentUserText,
@@ -11,6 +14,7 @@ import {
   stableId,
   type CoreOptions,
   type HostMessage,
+  type NavigateInput,
   type ResolvedOptions,
 } from "mindgraph-agent-core";
 import type {
@@ -42,7 +46,7 @@ export interface MindGraphEveOptions extends CoreOptions {
   capture?: boolean;
   /** Persist the pre-compaction history as a Session trace (default true). */
   captureRecap?: boolean;
-  /** Expose search / remember / forget / resume tools to the model (default true). */
+  /** Expose search / remember / forget / resume / navigate tools to the model (default true). */
   tools?: boolean;
 }
 
@@ -104,7 +108,9 @@ const RESUME_SCHEMA = { type: "object", properties: {}, additionalProperties: fa
  * - `compaction.requested` stores the pre-checkpoint history as a Session
  *   trace keyed by the operation id; `compaction.completed` returns that
  *   recap first (`mindgraph:recap`) so nothing is lost across compaction.
- * - `tools`: `search`, `remember`, `forget` (dry-run by default), `resume`.
+ * - `tools`: `search`, `remember`, `forget` (dry-run by default), `resume`,
+ *   and `navigate` (the `mindgraph_navigate` moves over `POST /navigate`;
+ *   the working-set and continuation tokens are held per eve session).
  *
  * Every call is fail-open within `timeoutMs` (default 5 s).
  */
@@ -117,6 +123,7 @@ export function mindgraphMemory(options: MindGraphEveOptions = {}): MemoryProvid
   const client = createClient(resolved);
   const recallOpts = options.recall === false ? null : (options.recall ?? {});
   const recaps = new Map<string, string>();
+  const navigator = new Navigator(client, resolved);
 
   async function topic(context: MemoryOperationContext): Promise<MemoryRecallMessage | null> {
     if (!recallOpts) return null;
@@ -219,6 +226,17 @@ export function mindgraphMemory(options: MindGraphEveOptions = {}): MemoryProvid
               client.plan({ action: "resume_work", limit: 1, agent_id: resolved.agentId } as never),
             );
             return { work: work ?? null };
+          },
+        },
+        navigate: {
+          description: NAVIGATE_DESCRIPTION,
+          inputSchema: NAVIGATE_INPUT_SCHEMA,
+          execute: async (input: NavigateInput, toolContext?: unknown) => {
+            // Tokens are held per eve session when the tool context names
+            // one, else per memory scope.
+            const session = (toolContext as { session?: { id?: unknown } } | undefined)?.session?.id;
+            const out = await navigator.run(input, typeof session === "string" && session ? `session:${session}` : `scope:${scopeKey}`);
+            return out.error ? { text: out.text, error: out.error, code: out.code ?? null } : { text: out.text };
           },
         },
       } as unknown as MemoryToolSet;
