@@ -3,6 +3,8 @@ name: publish
 # Publishes the three packages on a `v*` tag. The tag must equal the version
 # in every package.json (one version line for the workspace). Uses npm OIDC
 # trusted publishing (configure each package on npmjs.com first) — no token.
+# A manual run (workflow_dispatch) on main skips the tag check; use it to
+# retry a failed tag publish, since a re-run keeps the tag's workflow file.
 
 on:
   push:
@@ -23,10 +25,12 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
           cache: npm
-      # OIDC trusted publishing requires npm >=11.5.1. Node 22 bundles npm 10.
-      - run: npm install -g npm@11.5.1
+      # OIDC trusted publishing requires npm >=11.5.1; Node 22 bundles npm 10.
+      # Same as mindgraph-ts and mindgraph-mcp, which publish this way.
+      - run: npm install -g npm@latest
       - run: npm ci
       - name: tag == package versions
+        if: github.ref_type == 'tag'
         run: |
           tag="${GITHUB_REF_NAME#v}"
           for p in packages/core packages/tools packages/eve; do
@@ -34,6 +38,6 @@ jobs:
             if [ "$v" != "$tag" ]; then echo "$p is $v, tag is $tag" >&2; exit 1; fi
           done
       - run: npm run check
-      - run: npm publish -w packages/core --access public --provenance
-      - run: npm publish -w packages/tools --access public --provenance
-      - run: npm publish -w packages/eve --access public --provenance
+      - run: npm publish -w packages/core --access public --provenance --loglevel verbose
+      - run: npm publish -w packages/tools --access public --provenance --loglevel verbose
+      - run: npm publish -w packages/eve --access public --provenance --loglevel verbose
